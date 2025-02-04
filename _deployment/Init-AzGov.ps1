@@ -7,7 +7,7 @@
 		This script deploys all necessary resources and configuration for governance in Azure according to Getronics standards. It uses a parameters file of which the location can be passed to the script via a parameter.The Azure CLI is a requirement and can be automatically checked by using the CheckPrereqs (switch) parameter.
 	
 	.EXAMPLE
-		Init-AzGov.ps1 -ParametersFile "C:\Getronics\AzGov\contorso123.json" -CheckPrereqs
+		Init-AzGov.ps1 -ParametersFile "C:\Atos\AzGov\contorso123.json" -CheckPrereqs
 		
 		This command will use the contorso123.json file as parameter source and first check the prerequisites (Azure CLI) before starting the deployment.
 		
@@ -43,8 +43,8 @@ PREREQS
 [console]::ForegroundColor = "White"
 [console]::BackgroundColor = "Black"
 Clear-Host
-New-Item -Path "C:\Getronics" -ItemType Directory -ErrorAction SilentlyContinue
-New-Item -Path "C:\Getronics\AzGov" -ItemType Directory -ErrorAction SilentlyContinue
+New-Item -Path "C:\Atos" -ItemType Directory -ErrorAction SilentlyContinue
+New-Item -Path "C:\Atos\AzGov" -ItemType Directory -ErrorAction SilentlyContinue
 #Set-Location -Path "C:\Getronics\AzGov"
 If ($CheckPrereqs) {
         Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile "C:\Getronics\AzGov\AzureCLI.msi"
@@ -73,8 +73,8 @@ $TagCostCenter = $ParametersJSON.General.TagCostCenter
 $LocationDisplayName = $ParametersJSON.General.LocationDisplayName
 $SubscriptionName = $ParametersJSON.General.SubscriptionName
 # Probably no change needed...
-$AzGovLocalPath = "C:\Getronics\AzGov"
-$GithubBaseFolder = "https://github.com/mydur/ARMtemplates/raw/master/"
+$AzGovLocalPath = "C:\Atos\AzGov"
+$GithubBaseFolder = "https://github.com/rudmiatos/AzGov/raw/master/"
 $ResourceGroupName = "azgov-$Environment-rg"
 $TagPoliciesJSONFile = ($AzGovLocalPath + "\tagpolicies.json")
 $TagPoliciesSetdName = "azgov-tagpolicies-setd"
@@ -87,7 +87,7 @@ $AzPSAadaName = "azps-$Environment-aada"
 $AzCopyAadaName = "azcopy-$Environment-aada"
 $AzAutoAadaName = "azgovauto-$Environment-aada"
 $AzMonARMMIDName = "azmonarm-$Environment-mid"
-$TagOwnedBy = "Getronics"
+$TagOwnedBy = "Atos"
 $TagCreatedOn = (Get-Date -Format "yyyyMMdd")
 $TagEnvironment = $Environment
 $TagProject = "AzGov"
@@ -195,14 +195,15 @@ $AssignmentDisplayName = "AzGov: Restrict resource locations"
 $AssignmentName = "RestrictResourceLocations"
 $Scope = "/subscriptions/$SubscriptionID"
 $PolicyDef = Get-AzPolicyDefinition -Id "/providers/Microsoft.Authorization/policyDefinitions/e56962a6-4747-49cd-b67b-bf8b01975c4c"
-$listOfAllowedLocations = $ParametersJSON.General.AllowedResourceLocations
-$Assignment = New-AzPolicyAssignment -Name "$AssignmentName" -DisplayName "$AssignmentDisplayName" -Scope $Scope -PolicyDefinition $PolicyDef -listOfAllowedLocations $listOfAllowedLocations
+$listOfAllowedLocations = $ParametersJSON.General.AllowedResourceLocations 
+$PolicyParameters = '{ "listOfAllowedLocations":{"value":["' + ($listOfAllowedLocations -join '", "') + '"]}}'
+$Assignment = New-AzPolicyAssignment -Name "$AssignmentName" -DisplayName "$AssignmentDisplayName" -Scope $Scope -PolicyDefinition $PolicyDef -Location westeurope -PolicyParameter $PolicyParameters
 Write-Host ("   " + $Assignment.Id) -ForegroundColor "Gray"
 Write-Host ("Resourcegroup location limitation policy") -ForegroundColor "White"
 $AssignmentDisplayName = "AzGov: Restrict resourcegroup locations"
 $AssignmentName = "RestrictResourceGroupLocations"
 $PolicyDef = Get-AzPolicyDefinition -Id "/providers/Microsoft.Authorization/policyDefinitions/e765b5de-1225-4ba3-bd56-1ac6695af988"
-$Assignment = New-AzPolicyAssignment -Name "$AssignmentName" -DisplayName "$AssignmentDisplayName" -Scope $Scope -PolicyDefinition $PolicyDef -listOfAllowedLocations $listOfAllowedLocations
+$Assignment = New-AzPolicyAssignment -Name "$AssignmentName" -DisplayName "$AssignmentDisplayName" -Scope $Scope -PolicyDefinition $PolicyDef -Location westeurope -PolicyParameter $PolicyParameters
 Write-Host ("   " + $Assignment.Id) -ForegroundColor "Gray"
 
 
@@ -230,7 +231,7 @@ $KeyVault = (az keyvault create `
                 --name "$KeyVaultName" `
                 --subscription "$SubscriptionID" `
                 --resource-group "$ResourceGroupName" `
-                --enable-soft-delete true `
+                --enabled-for-disk-encryption true `
                 --enabled-for-deployment true `
                 --enabled-for-template-deployment true) `
 | ConvertFrom-Json
